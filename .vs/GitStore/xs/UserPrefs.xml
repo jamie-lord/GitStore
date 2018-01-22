@@ -1,0 +1,17 @@
+﻿<Properties StartupConfiguration="{0B408E2B-D399-409B-A6EA-E6DD5338A5EE}|Default">
+  <MonoDevelop.Ide.Workbench ActiveDocument="GitStore.cs">
+    <Files>
+      <File FileName="Program.cs" Line="15" Column="36" />
+      <File FileName="GitStore.cs" Line="36" Column="57" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore>
+      <Breakpoint file="/Users/jamie/Projects/GitStore/Program.cs" relfile="Program.cs" line="18" column="10" />
+    </BreakpointStore>
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MultiItemStartupConfigurations />
+  <MonoDevelop.Ide.ItemProperties.GitStore PreferredExecutionTarget="MonoDevelop.Default" />
+</Properties>
