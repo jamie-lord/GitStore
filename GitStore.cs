@@ -28,27 +28,27 @@ namespace GitStore
             var objId = GetIdValue(obj);
             var path = PathFor<T>(objId);
 
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
-            await File.WriteAllTextAsync(path, json);
-
-            using (var repo = new Repository(_repoDirectory))
+            try
             {
-                Commands.Stage(repo, path);
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                await File.WriteAllTextAsync(path, json);
 
-                if (!repo.RetrieveStatus().IsDirty)
+                using (var repo = new Repository(_repoDirectory))
                 {
-                    return;
-                }
+                    Commands.Stage(repo, path);
 
-                var signature = new Signature(_name, _email, DateTime.Now);
-                try
-                {
+                    if (!repo.RetrieveStatus().IsDirty)
+                    {
+                        return;
+                    }
+
+                    var signature = new Signature(_name, _email, DateTime.Now);
                     repo.Commit($"Added object of type {obj.GetType()} with id {objId}", signature, signature, new CommitOptions { PrettifyMessage = true });
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
             }
         }
 
