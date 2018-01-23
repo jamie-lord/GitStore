@@ -61,7 +61,7 @@ namespace GitStore
         public void Save<T>(T obj)
         {
             var path = SaveObject(obj);
-            Commit(new List<string> { path }, $"Added object of type {typeof(T)} with id {GetIdValue(obj)}");
+            Commit(path, $"Added object of type {typeof(T)} with id {GetIdValue(obj)}");
         }
 
         public void Save<T>(IEnumerable<T> objs)
@@ -103,7 +103,7 @@ namespace GitStore
         public void Save(Stream stream, string name)
         {
             var path = SaveFile(stream, name);
-            Commit(new List<string> { path }, $"Added file called {name}");
+            Commit(path, $"Added file called {name}");
         }
 
         public void Save(List<(Stream, string)> streams)
@@ -170,6 +170,50 @@ namespace GitStore
             return null;
         }
 
+        public void Delete(string name)
+        {
+            try
+            {
+                var path = PathForFile(name);
+                var sucess = DeleteFile(path);
+                if (sucess)
+                {
+                    Commit(path, $"Deleted 1 file");
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+
+        public void Delete(IEnumerable<string> names)
+        {
+            var paths = new List<string>();
+            foreach (var name in names)
+            {
+                var path = PathForFile(name);
+                var success = DeleteFile(path);
+                if (success)
+                {
+                    paths.Add(path);
+                }
+            }
+            if (paths.Count == 1)
+            {
+                Commit(paths, $"Deleted 1 file");
+            }
+            else
+            {
+                Commit(paths, $"Deleted {paths.Count} files");
+            }
+        }
+
+        private void Commit(string path, string message)
+        {
+            Commit(new List<string> { path }, message);
+        }
+
         private void Commit(List<string> paths, string message)
         {
             if (!paths.Any())
@@ -206,6 +250,69 @@ namespace GitStore
                 return ToObject<T>(path);
             }
             return default(T);
+        }
+
+        public void Delete<T>(T obj)
+        {
+            var objId = GetIdValue(obj);
+
+            Delete<T>(objId);
+        }
+
+        public void Delete<T>(object objId)
+        {
+            var path = PathFor<T>(objId);
+            var success = DeleteFile(path);
+            if (success)
+            {
+                Commit(path, $"Deleted object of type {typeof(T)}");
+            }
+        }
+
+        public void Delete<T>(IEnumerable<object> objIds)
+        {
+            var paths = new List<string>();
+            foreach (var objId in objIds)
+            {
+                var path = PathFor<T>(objId);
+                var success = DeleteFile(path);
+                if (success)
+                {
+                    paths.Add(path);
+                }
+            }
+            if (paths.Count == 1)
+            {
+                Commit(paths, $"Deleted 1 object of type {typeof(T)}");
+            }
+            else
+            {
+                Commit(paths, $"Deleted {paths.Count} objects of type {typeof(T)}");
+            }
+        }
+
+        public void Delete<T>(IEnumerable<T> objs)
+        {
+            var objIds = new List<object>();
+            foreach (var obj in objs)
+            {
+                var objId = GetIdValue(obj);
+                if (objId != null)
+                {
+                    objIds.Add(objId);
+                }
+            }
+            Delete<T>(objIds);
+        }
+
+        private bool DeleteFile(string path)
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+                return true;
+            }
+            return false;
         }
 
         public IEnumerable<T> Get<T>(Predicate<T> predicate)
