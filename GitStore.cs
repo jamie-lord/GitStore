@@ -28,6 +28,7 @@ namespace GitStore
             var objId = GetIdValue(obj);
             var path = PathFor<T>(objId);
 
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
             await File.WriteAllTextAsync(path, json);
 
             using (var repo = new Repository(_repoDirectory))
@@ -63,7 +64,14 @@ namespace GitStore
 
         private string PathFor<T>(object objId)
         {
-            return $"{_repoDirectory}/{objId}_{typeof(T)}.json";
+            var path = $"{typeof(T)}/{objId}.json";
+
+            foreach (var invalidPathChar in Path.GetInvalidPathChars())
+            {
+                path = path.Replace(invalidPathChar, '_');
+            }
+
+            return $"{_repoDirectory}/{path}";
         }
 
         private string ToJson<T>(T obj)
