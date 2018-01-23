@@ -22,38 +22,10 @@ namespace GitStore
             Repository.Init(_repoDirectory);
         }
 
-        private Signature _signature
-        {
-            get { return new Signature(_name, _email, DateTime.Now); }
-        }
-
         public void Save<T>(T obj)
         {
             var path = SaveObject(obj);
-            if (string.IsNullOrEmpty(path))
-            {
-                return;
-            }
-
-            try
-            {
-                using (var repo = new Repository(_repoDirectory))
-                {
-                    Commands.Stage(repo, path);
-
-                    if (!repo.RetrieveStatus().IsDirty)
-                    {
-                        return;
-                    }
-
-                    var signature = _signature;
-                    repo.Commit($"Added object of type {typeof(T)} with id {GetIdValue(obj)}", signature, signature, new CommitOptions { PrettifyMessage = true });
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
+            Commit(new List<string> { path }, $"Added object of type {typeof(T)} with id {GetIdValue(obj)}");
         }
 
         public void Save<T>(IEnumerable<T> objs)
@@ -68,31 +40,7 @@ namespace GitStore
                     paths.Add(path);
                 }
             }
-
-            if (!paths.Any())
-            {
-                return;
-            }
-
-            try
-            {
-                using (var repo = new Repository(_repoDirectory))
-                {
-                    Commands.Stage(repo, paths);
-
-                    if (!repo.RetrieveStatus().IsDirty)
-                    {
-                        return;
-                    }
-
-                    var signature = _signature;
-                    repo.Commit($"Added {paths.Count} objects of type {typeof(T)}", signature, signature, new CommitOptions { PrettifyMessage = true });
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
+            Commit(paths, $"Added {paths.Count} objects of type {typeof(T)}");
         }
 
         private string SaveObject<T>(T obj)
@@ -114,6 +62,97 @@ namespace GitStore
             }
 
             return null;
+        }
+
+        public void Save(Stream stream, string name)
+        {
+            var path = SaveFile(stream, name);
+            Commit(new List<string> { path }, $"Added file called {name}");
+        }
+
+        public void Save(List<(Stream, string)> streams)
+        {
+            var paths = new List<string>();
+
+            foreach (var t in streams)
+            {
+                var r = SaveFile(t.Item1, t.Item2);
+                if (!string.IsNullOrEmpty(r))
+                {
+                    paths.Add(r);
+                }
+            }
+
+            Commit(paths, $"Added {paths.Count} files");
+        }
+
+        private string SaveFile(Stream stream, string name)
+        {
+            var path = PathForFile(name);
+
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+
+                using (var fileStream = File.Create(path))
+                {
+                    stream.Seek(0, SeekOrigin.Begin);
+                    stream.CopyTo(fileStream);
+                }
+
+                return path;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            return null;
+        }
+
+        public Stream Get(string name)
+        {
+            var path = PathForFile(name);
+
+            try
+            {
+                if (File.Exists(path))
+                {
+                    return File.Open(path, FileMode.Open);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            return null;
+        }
+
+        private void Commit(List<string> paths, string message)
+        {
+            if (!paths.Any())
+            {
+                return;
+            }
+
+            try
+            {
+                using (var repo = new Repository(_repoDirectory))
+                {
+                    Commands.Stage(repo, paths);
+
+                    if (!repo.RetrieveStatus().IsDirty)
+                    {
+                        return;
+                    }
+
+                    var signature = new Signature(_name, _email, DateTime.Now);
+                    repo.Commit(message, signature, signature, new CommitOptions { PrettifyMessage = true });
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
 
         public T Get<T>(object objId)
@@ -161,6 +200,16 @@ namespace GitStore
             }
 
             return $"{_repoDirectory}/{path}";
+        }
+
+        private string PathForFile(string name)
+        {
+            foreach (var invalidPathChar in Path.GetInvalidFileNameChars())
+            {
+                name = name.Replace(invalidPathChar, '_');
+            }
+
+            return $"{_repoDirectory}/Files/{name}";
         }
 
         private string ToJson<T>(T obj)
