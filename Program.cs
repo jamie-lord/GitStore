@@ -12,7 +12,8 @@ namespace GitStore
 
             var faker = new Faker();
 
-            for (int i = 0; i < 1000; i++)
+            var objs = new List<TestObject>();
+            for (int i = 0; i < 10000; i++)
             {
                 var urls = new List<string>();
 
@@ -32,10 +33,14 @@ namespace GitStore
                     Timestamp = faker.Date.Past(20)
                 };
 
-                store.Save(obj).Wait();
+                objs.Add(obj);
 
-                var tObj = store.Get<TestObject>(obj.Id).Result;
+                // store.Save(obj).Wait();
+
+                // var tObj = store.Get<TestObject>(obj.Id).Result;
             }
+
+            store.Save<TestObject>(objs).Wait();
         }
     }
 
