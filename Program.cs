@@ -10,7 +10,7 @@ namespace GitStore
         {
             var store = new GitStore(@"/Users/jamie/Downloads/Test repo", "GitStore test", "test@test.com");
 
-            var r = store.Get<TestObject>(x => x.Id.ToString().ToLower().Contains("9"));
+            var r = store.Get<TestObject>(x => x.Urls.Exists(y => y.Contains(".com")) && (x.Timestamp - DateTime.Now).TotalDays < 30);
 
             foreach (var testObject in r)
             {
@@ -20,7 +20,7 @@ namespace GitStore
             var faker = new Faker();
 
             var objs = new List<TestObject>();
-            for (int i = 0; i < 10000; i++)
+            for (int i = 0; i < 1000; i++)
             {
                 var urls = new List<string>();
 
@@ -47,7 +47,7 @@ namespace GitStore
                 // var tObj = store.Get<TestObject>(obj.Id).Result;
             }
 
-            store.Save<TestObject>(objs).Wait();
+            store.Save<TestObject>(objs);
         }
     }
 

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using LibGit2Sharp;
 using Newtonsoft.Json;
 
@@ -28,17 +27,16 @@ namespace GitStore
             get { return new Signature(_name, _email, DateTime.Now); }
         }
 
-        public async Task Save<T>(T obj)
+        public void Save<T>(T obj)
         {
-            var json = ToJson(obj);
-            var objId = GetIdValue(obj);
-            var path = PathFor<T>(objId);
+            var path = SaveObject(obj);
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
 
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-                await File.WriteAllTextAsync(path, json);
-
                 using (var repo = new Repository(_repoDirectory))
                 {
                     Commands.Stage(repo, path);
@@ -49,7 +47,7 @@ namespace GitStore
                     }
 
                     var signature = _signature;
-                    repo.Commit($"Added object of type {typeof(T)} with id {objId}", signature, signature, new CommitOptions { PrettifyMessage = true });
+                    repo.Commit($"Added object of type {typeof(T)} with id {GetIdValue(obj)}", signature, signature, new CommitOptions { PrettifyMessage = true });
                 }
             }
             catch (Exception e)
@@ -58,26 +56,22 @@ namespace GitStore
             }
         }
 
-        public async Task Save<T>(IEnumerable<T> objs)
+        public void Save<T>(IEnumerable<T> objs)
         {
             var paths = new List<string>();
 
             foreach (var obj in objs)
             {
-                var json = ToJson(obj);
-                var objId = GetIdValue(obj);
-                var path = PathFor<T>(objId);
-                paths.Add(path);
+                var path = SaveObject(obj);
+                if (!string.IsNullOrEmpty(path))
+                {
+                    paths.Add(path);
+                }
+            }
 
-                try
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(path));
-                    await File.WriteAllTextAsync(path, json);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                }
+            if (!paths.Any())
+            {
+                return;
             }
 
             try
@@ -101,12 +95,33 @@ namespace GitStore
             }
         }
 
-        public async Task<T> Get<T>(object objId)
+        private string SaveObject<T>(T obj)
+        {
+            var json = ToJson(obj);
+            var objId = GetIdValue(obj);
+            var path = PathFor<T>(objId);
+
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.WriteAllText(path, json);
+
+                return path;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
+            return null;
+        }
+
+        public T Get<T>(object objId)
         {
             var path = PathFor<T>(objId);
             if (File.Exists(path))
             {
-                return await ToObject<T>(path);
+                return ToObject<T>(path);
             }
             return default(T);
         }
@@ -122,7 +137,7 @@ namespace GitStore
 
             foreach (var path in Directory.EnumerateFiles(dir))
             {
-                var obj = ToObject<T>(path).Result;
+                var obj = ToObject<T>(path);
 
                 if (obj == null)
                 {
@@ -153,9 +168,9 @@ namespace GitStore
             return JsonConvert.SerializeObject(obj, Formatting.Indented);
         }
 
-        private async Task<T> ToObject<T>(string path)
+        private T ToObject<T>(string path)
         {
-            var s = await File.ReadAllTextAsync(path);
+            var s = File.ReadAllText(path);
 
             if (!string.IsNullOrEmpty(s))
             {
