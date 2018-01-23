@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using LibGit2Sharp;
 using Newtonsoft.Json;
@@ -109,6 +110,31 @@ namespace GitStore
                 return await ToObject<T>(path);
             }
             return default(T);
+        }
+
+        public IEnumerable<T> Get<T>(Predicate<T> predicate)
+        {
+            var dir = $"{_repoDirectory}/{typeof(T)}";
+
+            if (!Directory.Exists(dir))
+            {
+                yield break;
+            }
+
+            foreach (var path in Directory.EnumerateFiles(dir))
+            {
+                var obj = ToObject<T>(path).Result;
+
+                if (obj == null)
+                {
+                    continue;
+                }
+
+                if (predicate.Invoke(obj))
+                {
+                    yield return obj;
+                }
+            }
         }
 
         private string PathFor<T>(object objId)

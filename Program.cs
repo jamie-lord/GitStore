@@ -10,6 +10,13 @@ namespace GitStore
         {
             var store = new GitStore(@"/Users/jamie/Downloads/Test repo", "GitStore test", "test@test.com");
 
+            var r = store.Get<TestObject>(x => x.Id.ToString().ToLower().Contains("9"));
+
+            foreach (var testObject in r)
+            {
+                
+            }
+
             var faker = new Faker();
 
             var objs = new List<TestObject>();
