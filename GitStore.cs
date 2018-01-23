@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using LibGit2Sharp;
 using Newtonsoft.Json;
@@ -174,7 +173,7 @@ namespace GitStore
 
         private object GetIdValue<T>(T obj)
         {
-            var props = obj.GetType().GetProperties().Where(prop => Attribute.IsDefined(prop, typeof(ObjectId)));
+            var props = obj.GetType().GetProperties().Where(prop => prop.Name == "Id");
 
             if (props.Count() != 1)
             {
@@ -183,10 +182,5 @@ namespace GitStore
 
             return props.First().GetValue(obj);
         }
-    }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public class ObjectId : Attribute
-    {
     }
 }
