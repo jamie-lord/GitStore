@@ -83,7 +83,14 @@ namespace GitStore
                 }
             }
 
-            Commit(paths, $"Added {paths.Count} files");
+            if (paths.Count == 1)
+            {
+                Commit(paths, $"Added 1 file");
+            }
+            else
+            {
+                Commit(paths, $"Added {paths.Count} files");
+            }
         }
 
         private string SaveFile(Stream stream, string name)
