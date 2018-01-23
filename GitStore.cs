@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -22,6 +23,11 @@ namespace GitStore
             Repository.Init(_repoDirectory);
         }
 
+        private Signature _signature
+        {
+            get { return new Signature(_name, _email, DateTime.Now); }
+        }
+
         public async Task Save<T>(T obj)
         {
             var json = ToJson(obj);
@@ -42,8 +48,51 @@ namespace GitStore
                         return;
                     }
 
-                    var signature = new Signature(_name, _email, DateTime.Now);
-                    repo.Commit($"Added object of type {obj.GetType()} with id {objId}", signature, signature, new CommitOptions { PrettifyMessage = true });
+                    var signature = _signature;
+                    repo.Commit($"Added object of type {typeof(T)} with id {objId}", signature, signature, new CommitOptions { PrettifyMessage = true });
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+
+        public async Task Save<T>(IEnumerable<T> objs)
+        {
+            var paths = new List<string>();
+
+            foreach (var obj in objs)
+            {
+                var json = ToJson(obj);
+                var objId = GetIdValue(obj);
+                var path = PathFor<T>(objId);
+                paths.Add(path);
+
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(path));
+                    await File.WriteAllTextAsync(path, json);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
+            }
+
+            try
+            {
+                using (var repo = new Repository(_repoDirectory))
+                {
+                    Commands.Stage(repo, paths);
+
+                    if (!repo.RetrieveStatus().IsDirty)
+                    {
+                        return;
+                    }
+
+                    var signature = _signature;
+                    repo.Commit($"Added {paths.Count} objects of type {typeof(T)}", signature, signature, new CommitOptions { PrettifyMessage = true });
                 }
             }
             catch (Exception e)
