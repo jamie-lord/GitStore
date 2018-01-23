@@ -10,14 +10,17 @@ namespace GitStore
     {
         public static void Main(string[] args)
         {
-            var store = new GitStore(@"/Users/jamie/Downloads/Test repo", "GitStore test", "test@test.com");
             var faker = new Faker();
 
+            var store = GitStore.Instance;
+            store.RepoDirectory = @"C:\Users\jalogb\Downloads\Test Repo";
+            store.Name = "GitStore test";
+            store.Email = "test@test.com";
 
             var urls = new List<string>
             {
-                "https://github.com/facebookresearch/Detectron/blob/master/demo/16004479832_a748d55f21_k.jpg?raw=true",
-                "https://github.com/facebookresearch/Detectron/blob/master/demo/34501842524_3c858b3080_k.jpg?raw=true",
+                "https://github.com/facebookresearch/Detectron/blob/master/demo/16004479832_a748d55f21_k.jpg",
+                "https://github.com/facebookresearch/Detectron/blob/master/demo/34501842524_3c858b3080_k.jpg",
                 "https://raw.githubusercontent.com/facebookresearch/Detectron/master/GETTING_STARTED.md"
             };
 

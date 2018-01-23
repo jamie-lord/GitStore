@@ -7,19 +7,55 @@ using Newtonsoft.Json;
 
 namespace GitStore
 {
-    public class GitStore
+    public sealed class GitStore
     {
-        private readonly string _repoDirectory;
-        private readonly string _name;
-        private readonly string _email;
+        private static readonly GitStore instance = new GitStore();
 
-        public GitStore(string repoDirectory, string name, string email)
+        static GitStore()
         {
-            _repoDirectory = repoDirectory;
-            _name = name;
-            _email = email;
+        }
 
-            Repository.Init(_repoDirectory);
+        private GitStore()
+        {
+        }
+
+        public static GitStore Instance
+        {
+            get
+            {
+                return instance;
+            }
+        }
+
+        private string _repoDirectory;
+
+        public string RepoDirectory
+        {
+            get
+            {
+                return _repoDirectory;
+            }
+            set
+            {
+                _repoDirectory = value;
+                Repository.Init(_repoDirectory);
+            }
+        }
+
+        private string _name;
+
+        public string Name
+        {
+            get { return _name; }
+            set { _name = value; }
+        }
+
+        private string _email;
+
+        public string Email
+        {
+            get { return _email; }
+            set { _email = value; }
         }
 
         public void Save<T>(T obj)
