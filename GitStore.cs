@@ -166,7 +166,7 @@ namespace GitStore
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
+                    Console.WriteLine("Failed to deserialize json to object. " + ex.Message);
                 }
             }
             return default(T);
