@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -7,16 +8,11 @@ namespace Tests
     public class GitStoreTests
     {
         private GitStore.GitStore _store;
-        private const string _tempRepoDir = @"C:\Users\jalogb\Downloads\Testing repo";
+        private readonly string _tempRepoDir = Path.GetTempPath() + @"\GitStore_Unit_Tests_" + DateTime.Now.Ticks;
 
         [TestInitialize]
         public void Initialize()
         {
-            if (Directory.Exists(_tempRepoDir))
-            {
-                Directory.Delete(_tempRepoDir, true);
-            }
-
             Directory.CreateDirectory(_tempRepoDir);
 
             _store = GitStore.GitStore.Instance;
@@ -43,11 +39,6 @@ namespace Tests
         public void TestCleanup()
         {
             _store = null;
-
-            if (Directory.Exists(_tempRepoDir))
-            {
-                Directory.Delete(_tempRepoDir, true);
-            }
         }
 
         public class TestObject
