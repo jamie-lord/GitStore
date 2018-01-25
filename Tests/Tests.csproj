@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Foundation.ObjectHydrator\Foundation.ObjectHydrator.csproj" />
     <ProjectReference Include="..\GitStore\GitStore.csproj" />
   </ItemGroup>
 

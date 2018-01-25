@@ -1,7 +1,10 @@
 using System;
+using System.Collections;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime;
+using Foundation.ObjectHydrator;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Tests
@@ -26,16 +29,12 @@ namespace Tests
         [TestMethod]
         public void SaveObject()
         {
-            var obj = new TestObject()
-            {
-                Id = 1,
-                Data = "This is only a test"
-            };
+            var obj = _hydrator.GetSingle();
 
             _store.Save(obj);
 
             Assert.IsTrue(Directory.Exists(_tempRepoDir + @"\" + obj.GetType()));
-            Assert.IsTrue(File.Exists(_tempRepoDir + @"\" + obj.GetType() + @"\1.json"));
+            Assert.IsTrue(File.Exists(_tempRepoDir + @"\" + obj.GetType() + @"\" + obj.Id + ".json"));
         }
 
         [TestMethod]
@@ -70,57 +69,60 @@ namespace Tests
         [TestMethod]
         public void GetObject()
         {
-            var obj = new TestObject()
-            {
-                Id = 1,
-                Data = "This is only a test"
-            };
+            var obj = _hydrator.GetSingle();
 
             _store.Save(obj);
 
-            var result = _store.Get<TestObject>(1);
+            var result = _store.Get<TestObject>(obj.Id);
 
             Assert.IsNotNull(result);
-            Assert.AreEqual(1, result.Id);
-            Assert.AreEqual("This is only a test", result.Data);
+
+            CompareObjects(obj, result);
+        }
+
+        private void CompareObjects(object o1, object o2)
+        {
+            foreach (var propertyInfo in o1.GetType().GetProperties())
+            {
+                if (propertyInfo.PropertyType == typeof(byte[]))
+                {
+                    Assert.IsTrue(StructuralComparisons.StructuralEqualityComparer.Equals(propertyInfo.GetValue(o1), propertyInfo.GetValue(o2)));
+                }
+                else
+                {
+                    Assert.AreEqual(propertyInfo.GetValue(o1), propertyInfo.GetValue(o2));
+                }
+            }
         }
 
         [TestMethod]
         public void GetPredicateObject()
         {
-            var obj = new TestObject()
-            {
-                Id = 1,
-                Data = "This is only a test"
-            };
-
+            var obj = _hydrator.GetSingle();
             _store.Save(obj);
 
-            var result = _store.Get<TestObject>(x => x.Data.Contains("test"));
+            var result = _store.Get<TestObject>(x => x.String.Contains(obj.String));
 
             Assert.IsNotNull(result);
-            Assert.AreEqual(1, result.Count());
-            Assert.AreEqual("This is only a test", result.First().Data);
+            CompareObjects(obj, result.First());
         }
 
         [TestMethod]
         public void DeleteObject()
         {
-            var obj = new TestObject()
-            {
-                Id = 1,
-                Data = "This is only a test"
-            };
+            var obj = _hydrator.GetSingle();
 
             _store.Save(obj);
 
-            var result = _store.Get<TestObject>(1);
+            var result = _store.Get<TestObject>(obj.Id);
 
             Assert.IsNotNull(result);
 
+            CompareObjects(obj, result);
+
             _store.Delete(obj);
 
-            result = _store.Get<TestObject>(1);
+            result = _store.Get<TestObject>(obj.Id);
 
             Assert.IsNull(result);
         }
@@ -156,10 +158,23 @@ namespace Tests
             _store = null;
         }
 
+        private Hydrator<TestObject> _hydrator = new Hydrator<TestObject>();
+
         public class TestObject
         {
             public int Id { get; set; }
-            public string Data { get; set; }
+            public string String { get; set; }
+            public decimal Decimal { get; set; }
+            public bool Bool { get; set; }
+            public byte[] Bytes { get; set; }
+            public char Char { get; set; }
+            public double Double { get; set; }
+            public float Float { get; set; }
+            public long Long { get; set; }
+            public sbyte Sbyte { get; set; }
+            public uint Uint { get; set; }
+            public ushort Ushort { get; set; }
+            public Guid Guid { get; set; }
         }
     }
 }
