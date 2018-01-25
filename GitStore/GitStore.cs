@@ -330,6 +330,12 @@ namespace GitStore
             if (File.Exists(path))
             {
                 File.Delete(path);
+
+                if (Directory.GetFiles(Path.GetDirectoryName(path)).Length == 0)
+                {
+                    Directory.Delete(Path.GetDirectoryName(path));
+                }
+
                 return true;
             }
             return false;

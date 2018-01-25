@@ -147,7 +147,7 @@ namespace Tests
             result = _store.Get("image.jpg");
 
             Assert.IsNull(result);
-            Assert.IsFalse(Directory.EnumerateFileSystemEntries(_tempRepoDir + @"\Files").Any());
+            Assert.IsFalse(Directory.Exists(_tempRepoDir + @"\Files"));
         }
 
         [TestCleanup]
