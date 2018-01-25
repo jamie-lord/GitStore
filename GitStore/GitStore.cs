@@ -343,7 +343,7 @@ namespace GitStore
 
         public IEnumerable<T> Get<T>(Predicate<T> predicate)
         {
-            var dir = $"{_repoDirectory}/{typeof(T)}";
+            var dir = PathFor<T>();
 
             if (!Directory.Exists(dir))
             {
@@ -364,6 +364,33 @@ namespace GitStore
                     yield return obj;
                 }
             }
+        }
+
+        public IEnumerable<T> Get<T>()
+        {
+            var dir = PathFor<T>();
+
+            if (!Directory.Exists(dir))
+            {
+                yield break;
+            }
+
+            foreach (var path in Directory.EnumerateFiles(dir))
+            {
+                var obj = ToObject<T>(path);
+
+                if (obj == null)
+                {
+                    continue;
+                }
+
+                yield return obj;
+            }
+        }
+
+        private string PathFor<T>()
+        {
+            return $"{_repoDirectory}/{typeof(T)}";
         }
 
         private string PathFor<T>(object objId)
