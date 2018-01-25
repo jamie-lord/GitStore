@@ -100,9 +100,24 @@ namespace GitStore
             return null;
         }
 
-        public void Save(Stream stream, string name)
+        public void Save(byte[] data, string name)
         {
-            var path = SaveFile(stream, name);
+            var stream = new MemoryStream(data);
+            Save(stream, name);
+        }
+
+        public void Save(string data, string name)
+        {
+            MemoryStream stream = new MemoryStream();
+            StreamWriter writer = new StreamWriter(stream);
+            writer.Write(data);
+            writer.Flush();
+            Save(stream, name);
+        }
+
+        public void Save(Stream data, string name)
+        {
+            var path = SaveFile(data, name);
             Commit(path, $"Added file called {name}");
         }
 
