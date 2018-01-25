@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Net;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Tests
@@ -33,6 +35,115 @@ namespace Tests
             _store.Save(obj);
 
             Assert.IsTrue(Directory.Exists(_tempRepoDir + @"\" + obj.GetType()));
+            Assert.IsTrue(File.Exists(_tempRepoDir + @"\" + obj.GetType() + @"\1.json"));
+        }
+
+        [TestMethod]
+        public void SaveFile()
+        {
+            using (WebClient webClient = new WebClient())
+            {
+                var iData = webClient.DownloadData("http://www.ifsworld.com/content/images/logo.png");
+
+                _store.Save(iData, "logo.png");
+            }
+
+            Assert.IsTrue(Directory.Exists(_tempRepoDir + @"\Files"));
+            Assert.IsTrue(File.Exists(_tempRepoDir + @"\Files\logo.png"));
+        }
+
+        [TestMethod]
+        public void GetFile()
+        {
+            using (WebClient webClient = new WebClient())
+            {
+                var iData = webClient.DownloadData("http://www.ifsworld.com/content/images/logo.png");
+
+                _store.Save(iData, "logo.png");
+            }
+
+            var file = _store.Get("logo.png");
+
+            Assert.IsNotNull(file);
+        }
+
+        [TestMethod]
+        public void GetObject()
+        {
+            var obj = new TestObject()
+            {
+                Id = 1,
+                Data = "This is only a test"
+            };
+
+            _store.Save(obj);
+
+            var result = _store.Get<TestObject>(1);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(1, result.Id);
+            Assert.AreEqual("This is only a test", result.Data);
+        }
+
+        [TestMethod]
+        public void GetPredicateObject()
+        {
+            var obj = new TestObject()
+            {
+                Id = 1,
+                Data = "This is only a test"
+            };
+
+            _store.Save(obj);
+
+            var result = _store.Get<TestObject>(x => x.Data.Contains("test"));
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(1, result.Count());
+            Assert.AreEqual("This is only a test", result.First().Data);
+        }
+
+        [TestMethod]
+        public void DeleteObject()
+        {
+            var obj = new TestObject()
+            {
+                Id = 1,
+                Data = "This is only a test"
+            };
+
+            _store.Save(obj);
+
+            var result = _store.Get<TestObject>(1);
+
+            Assert.IsNotNull(result);
+
+            _store.Delete(obj);
+
+            result = _store.Get<TestObject>(1);
+
+            Assert.IsNull(result);
+        }
+
+        [TestMethod]
+        public void DeleteFile()
+        {
+            using (WebClient webClient = new WebClient())
+            {
+                var iData = webClient.DownloadData("http://www.ifsworld.com/content/images/logo.png");
+
+                _store.Save(iData, "logo.png");
+            }
+
+            var result = _store.Get("logo.png");
+
+            Assert.IsNotNull(result);
+
+            _store.Delete("logo.png");
+
+            result = _store.Get("logo.png");
+
+            Assert.IsNull(result);
         }
 
         [TestCleanup]
