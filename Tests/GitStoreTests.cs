@@ -43,13 +43,13 @@ namespace Tests
         {
             using (WebClient webClient = new WebClient())
             {
-                var iData = webClient.DownloadData("http://www.ifsworld.com/content/images/logo.png");
+                var iData = webClient.DownloadData("https://picsum.photos/500/500?random");
 
-                _store.Save(iData, "logo.png");
+                _store.Save(iData, "image.jpg");
             }
 
             Assert.IsTrue(Directory.Exists(_tempRepoDir + @"\Files"));
-            Assert.IsTrue(File.Exists(_tempRepoDir + @"\Files\logo.png"));
+            Assert.IsTrue(File.Exists(_tempRepoDir + @"\Files\image.jpg"));
         }
 
         [TestMethod]
@@ -57,12 +57,12 @@ namespace Tests
         {
             using (WebClient webClient = new WebClient())
             {
-                var iData = webClient.DownloadData("http://www.ifsworld.com/content/images/logo.png");
+                var iData = webClient.DownloadData("https://picsum.photos/500/500?random");
 
-                _store.Save(iData, "logo.png");
+                _store.Save(iData, "image.jpg");
             }
 
-            var file = _store.Get("logo.png");
+            var file = _store.Get("image.jpg");
 
             Assert.IsNotNull(file);
         }
@@ -130,20 +130,24 @@ namespace Tests
         {
             using (WebClient webClient = new WebClient())
             {
-                var iData = webClient.DownloadData("http://www.ifsworld.com/content/images/logo.png");
+                var iData = webClient.DownloadData("https://picsum.photos/500/500?random");
 
-                _store.Save(iData, "logo.png");
+                _store.Save(iData, "image.jpg");
             }
 
-            var result = _store.Get("logo.png");
+            var result = _store.Get("image.jpg");
 
             Assert.IsNotNull(result);
 
-            _store.Delete("logo.png");
+            result.Close();
+            result.Dispose();
 
-            result = _store.Get("logo.png");
+            _store.Delete("image.jpg");
+
+            result = _store.Get("image.jpg");
 
             Assert.IsNull(result);
+            Assert.IsFalse(Directory.EnumerateFileSystemEntries(_tempRepoDir + @"\Files").Any());
         }
 
         [TestCleanup]

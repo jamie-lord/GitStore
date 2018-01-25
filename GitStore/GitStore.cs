@@ -158,12 +158,17 @@ namespace GitStore
                     stream.CopyTo(fileStream);
                 }
 
+                stream.Close();
+                stream.Dispose();
                 return path;
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
             }
+
+            stream.Close();
+            stream.Dispose();
             return null;
         }
 
