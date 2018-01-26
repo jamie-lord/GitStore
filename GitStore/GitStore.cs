@@ -41,7 +41,7 @@ namespace GitStore
             ExecuteWrite(() =>
             {
                 var path = SaveObjectAction(obj);
-                Commit(path, $"Added object of type {typeof(T)} with id {GetIdPropertyValue(obj)}");
+                Commit(path);
             });
         }
 
@@ -62,7 +62,7 @@ namespace GitStore
                     }
                 }
 
-                Commit(paths, $"Added {paths.Count} objects of type {typeof(T)}");
+                Commit(paths);
             });
         }
 
@@ -116,7 +116,7 @@ namespace GitStore
             ExecuteWrite(() =>
             {
                 var path = SaveFile(data, name);
-                Commit(path, $"Added file called {name}");
+                Commit(path);
             });
         }
 
@@ -137,11 +137,11 @@ namespace GitStore
 
                 if (paths.Count == 1)
                 {
-                    Commit(paths, $"Added 1 file");
+                    Commit(paths);
                 }
                 else
                 {
-                    Commit(paths, $"Added {paths.Count} files");
+                    Commit(paths);
                 }
             });
         }
@@ -203,7 +203,7 @@ namespace GitStore
                     var sucess = DeleteFileAction(path);
                     if (sucess)
                     {
-                        Commit(path, $"Deleted 1 file");
+                        Commit(path);
                     }
                 }
                 catch (Exception e)
@@ -230,21 +230,21 @@ namespace GitStore
 
                 if (paths.Count == 1)
                 {
-                    Commit(paths, $"Deleted 1 file");
+                    Commit(paths);
                 }
                 else
                 {
-                    Commit(paths, $"Deleted {paths.Count} files");
+                    Commit(paths);
                 }
             });
         }
 
-        private void Commit(string path, string message)
+        private void Commit(string path)
         {
-            Commit(new List<string> { path }, message);
+            Commit(new List<string> { path });
         }
 
-        private void Commit(List<string> paths, string message)
+        private void Commit(List<string> paths)
         {
             if (!paths.Any())
             {
@@ -257,9 +257,33 @@ namespace GitStore
                 {
                     Commands.Stage(repo, paths);
 
-                    if (!repo.RetrieveStatus().IsDirty)
+                    var status = repo.RetrieveStatus();
+
+                    if (!status.IsDirty)
                     {
                         return;
+                    }
+
+                    var message = "";
+
+                    foreach (var statusEntry in status.Added)
+                    {
+                        message = message + $"Added {statusEntry.FilePath}\n";
+                    }
+
+                    foreach (var statusEntry in status.Modified)
+                    {
+                        message = message + $"Modified {statusEntry.FilePath}\n";
+                    }
+
+                    foreach (var statusEntry in status.Removed)
+                    {
+                        message = message + $"Removed {statusEntry.FilePath}\n";
+                    }
+
+                    foreach (var statusEntry in status.Staged)
+                    {
+                        message = message + $"{statusEntry.State} {statusEntry.FilePath}\n";
                     }
 
                     var signature = new Signature(Name, Email, DateTime.Now);
@@ -298,7 +322,7 @@ namespace GitStore
                 var success = DeleteFileAction(path);
                 if (success)
                 {
-                    Commit(path, $"Deleted object of type {typeof(T)}");
+                    Commit(path);
                 }
             });
         }
@@ -320,11 +344,11 @@ namespace GitStore
 
                 if (paths.Count == 1)
                 {
-                    Commit(paths, $"Deleted 1 object of type {typeof(T)}");
+                    Commit(paths);
                 }
                 else
                 {
-                    Commit(paths, $"Deleted {paths.Count} objects of type {typeof(T)}");
+                    Commit(paths);
                 }
             });
         }
