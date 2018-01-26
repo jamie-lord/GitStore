@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using LibGit2Sharp;
 using Newtonsoft.Json;
 
@@ -9,7 +10,7 @@ namespace GitStore
 {
     public sealed class GitStore
     {
-        private static readonly GitStore instance = new GitStore();
+        private string _repoDirectory;
 
         static GitStore()
         {
@@ -19,22 +20,11 @@ namespace GitStore
         {
         }
 
-        public static GitStore Instance
-        {
-            get
-            {
-                return instance;
-            }
-        }
-
-        private string _repoDirectory;
+        public static GitStore Instance { get; } = new GitStore();
 
         public string RepoDirectory
         {
-            get
-            {
-                return _repoDirectory;
-            }
+            get { return _repoDirectory; }
             set
             {
                 _repoDirectory = value;
@@ -42,48 +32,54 @@ namespace GitStore
             }
         }
 
-        private string _name;
+        public string Name { get; set; }
 
-        public string Name
+        public string Email { get; set; }
+
+        public void SaveObject<T>(T obj)
         {
-            get { return _name; }
-            set { _name = value; }
-        }
-
-        private string _email;
-
-        public string Email
-        {
-            get { return _email; }
-            set { _email = value; }
-        }
-
-        public void Save<T>(T obj)
-        {
-            var path = SaveObject(obj);
-            Commit(path, $"Added object of type {typeof(T)} with id {GetIdValue(obj)}");
-        }
-
-        public void Save<T>(IEnumerable<T> objs)
-        {
-            var paths = new List<string>();
-
-            foreach (var obj in objs)
+            ExecuteWrite(() =>
             {
-                var path = SaveObject(obj);
-                if (!string.IsNullOrEmpty(path))
-                {
-                    paths.Add(path);
-                }
-            }
-            Commit(paths, $"Added {paths.Count} objects of type {typeof(T)}");
+                var path = SaveObjectAction(obj);
+                Commit(path, $"Added object of type {typeof(T)} with id {GetIdPropertyValue(obj)}");
+            });
         }
 
-        private string SaveObject<T>(T obj)
+        private static readonly Object _writeLock = new Object();
+
+        public void SaveObjects<T>(IEnumerable<T> objs)
         {
-            var json = ToJson(obj);
-            var objId = GetIdValue(obj);
-            var path = PathFor<T>(objId);
+            ExecuteWrite(() =>
+            {
+                var paths = new List<string>();
+
+                foreach (var obj in objs)
+                {
+                    var path = SaveObjectAction(obj);
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        paths.Add(path);
+                    }
+                }
+
+                Commit(paths, $"Added {paths.Count} objects of type {typeof(T)}");
+            });
+        }
+
+        private void ExecuteWrite(Action action)
+        {
+            var task = new Task(action);
+            lock (_writeLock)
+            {
+                task.RunSynchronously();
+            }
+        }
+
+        private string SaveObjectAction<T>(T obj)
+        {
+            var json = ObjectToJson(obj);
+            var objId = GetIdPropertyValue(obj);
+            var path = PathForObjectWithId<T>(objId);
 
             try
             {
@@ -100,48 +96,54 @@ namespace GitStore
             return null;
         }
 
-        public void Save(byte[] data, string name)
+        public void SaveData(byte[] data, string name)
         {
             var stream = new MemoryStream(data);
-            Save(stream, name);
+            SaveStream(stream, name);
         }
 
-        public void Save(string data, string name)
+        public void SaveString(string data, string name)
         {
             MemoryStream stream = new MemoryStream();
             StreamWriter writer = new StreamWriter(stream);
             writer.Write(data);
             writer.Flush();
-            Save(stream, name);
+            SaveStream(stream, name);
         }
 
-        public void Save(Stream data, string name)
+        public void SaveStream(Stream data, string name)
         {
-            var path = SaveFile(data, name);
-            Commit(path, $"Added file called {name}");
-        }
-
-        public void Save(List<(Stream, string)> streams)
-        {
-            var paths = new List<string>();
-
-            foreach (var t in streams)
+            ExecuteWrite(() =>
             {
-                var r = SaveFile(t.Item1, t.Item2);
-                if (!string.IsNullOrEmpty(r))
+                var path = SaveFile(data, name);
+                Commit(path, $"Added file called {name}");
+            });
+        }
+
+        public void SaveStreams(List<(Stream, string)> streams)
+        {
+            ExecuteWrite(() =>
+            {
+                var paths = new List<string>();
+
+                foreach (var t in streams)
                 {
-                    paths.Add(r);
+                    var r = SaveFile(t.Item1, t.Item2);
+                    if (!string.IsNullOrEmpty(r))
+                    {
+                        paths.Add(r);
+                    }
                 }
-            }
 
-            if (paths.Count == 1)
-            {
-                Commit(paths, $"Added 1 file");
-            }
-            else
-            {
-                Commit(paths, $"Added {paths.Count} files");
-            }
+                if (paths.Count == 1)
+                {
+                    Commit(paths, $"Added 1 file");
+                }
+                else
+                {
+                    Commit(paths, $"Added {paths.Count} files");
+                }
+            });
         }
 
         private string SaveFile(Stream stream, string name)
@@ -172,7 +174,7 @@ namespace GitStore
             return null;
         }
 
-        public Stream Get(string name)
+        public Stream GetStream(string name)
         {
             var path = PathForFile(name);
 
@@ -187,46 +189,54 @@ namespace GitStore
             {
                 Console.WriteLine(e);
             }
+
             return null;
         }
 
-        public void Delete(string name)
+        public void DeleteFile(string name)
         {
-            try
+            ExecuteWrite(() =>
             {
-                var path = PathForFile(name);
-                var sucess = DeleteFile(path);
-                if (sucess)
+                try
                 {
-                    Commit(path, $"Deleted 1 file");
+                    var path = PathForFile(name);
+                    var sucess = DeleteFileAction(path);
+                    if (sucess)
+                    {
+                        Commit(path, $"Deleted 1 file");
+                    }
                 }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
+            });
         }
 
-        public void Delete(IEnumerable<string> names)
+        public void DeleteFiles(IEnumerable<string> names)
         {
-            var paths = new List<string>();
-            foreach (var name in names)
+            ExecuteWrite(() =>
             {
-                var path = PathForFile(name);
-                var success = DeleteFile(path);
-                if (success)
+                var paths = new List<string>();
+                foreach (var name in names)
                 {
-                    paths.Add(path);
+                    var path = PathForFile(name);
+                    var success = DeleteFileAction(path);
+                    if (success)
+                    {
+                        paths.Add(path);
+                    }
                 }
-            }
-            if (paths.Count == 1)
-            {
-                Commit(paths, $"Deleted 1 file");
-            }
-            else
-            {
-                Commit(paths, $"Deleted {paths.Count} files");
-            }
+
+                if (paths.Count == 1)
+                {
+                    Commit(paths, $"Deleted 1 file");
+                }
+                else
+                {
+                    Commit(paths, $"Deleted {paths.Count} files");
+                }
+            });
         }
 
         private void Commit(string path, string message)
@@ -252,7 +262,7 @@ namespace GitStore
                         return;
                     }
 
-                    var signature = new Signature(_name, _email, DateTime.Now);
+                    var signature = new Signature(Name, Email, DateTime.Now);
                     repo.Commit(message, signature, signature, new CommitOptions { PrettifyMessage = true });
                 }
             }
@@ -262,70 +272,79 @@ namespace GitStore
             }
         }
 
-        public T Get<T>(object objId)
+        public T GetObject<T>(object objId)
         {
-            var path = PathFor<T>(objId);
+            var path = PathForObjectWithId<T>(objId);
             if (File.Exists(path))
             {
-                return ToObject<T>(path);
+                return JsonToObject<T>(path);
             }
+
             return default(T);
         }
 
-        public void Delete<T>(T obj)
+        public void DeleteObject<T>(T obj)
         {
-            var objId = GetIdValue(obj);
+            var objId = GetIdPropertyValue(obj);
 
-            Delete<T>(objId);
+            DeleteObjectWithId<T>(objId);
         }
 
-        public void Delete<T>(object objId)
+        public void DeleteObjectWithId<T>(object objId)
         {
-            var path = PathFor<T>(objId);
-            var success = DeleteFile(path);
-            if (success)
+            ExecuteWrite(() =>
             {
-                Commit(path, $"Deleted object of type {typeof(T)}");
-            }
-        }
-
-        public void Delete<T>(IEnumerable<object> objIds)
-        {
-            var paths = new List<string>();
-            foreach (var objId in objIds)
-            {
-                var path = PathFor<T>(objId);
-                var success = DeleteFile(path);
+                var path = PathForObjectWithId<T>(objId);
+                var success = DeleteFileAction(path);
                 if (success)
                 {
-                    paths.Add(path);
+                    Commit(path, $"Deleted object of type {typeof(T)}");
                 }
-            }
-            if (paths.Count == 1)
-            {
-                Commit(paths, $"Deleted 1 object of type {typeof(T)}");
-            }
-            else
-            {
-                Commit(paths, $"Deleted {paths.Count} objects of type {typeof(T)}");
-            }
+            });
         }
 
-        public void Delete<T>(IEnumerable<T> objs)
+        public void DeleteObjectsWithIds<T>(IEnumerable<object> objIds)
+        {
+            ExecuteWrite(() =>
+            {
+                var paths = new List<string>();
+                foreach (var objId in objIds)
+                {
+                    var path = PathForObjectWithId<T>(objId);
+                    var success = DeleteFileAction(path);
+                    if (success)
+                    {
+                        paths.Add(path);
+                    }
+                }
+
+                if (paths.Count == 1)
+                {
+                    Commit(paths, $"Deleted 1 object of type {typeof(T)}");
+                }
+                else
+                {
+                    Commit(paths, $"Deleted {paths.Count} objects of type {typeof(T)}");
+                }
+            });
+        }
+
+        public void DeleteObjects<T>(IEnumerable<T> objs)
         {
             var objIds = new List<object>();
             foreach (var obj in objs)
             {
-                var objId = GetIdValue(obj);
+                var objId = GetIdPropertyValue(obj);
                 if (objId != null)
                 {
                     objIds.Add(objId);
                 }
             }
-            Delete<T>(objIds);
+
+            DeleteObjectsWithIds<T>(objIds);
         }
 
-        private bool DeleteFile(string path)
+        private bool DeleteFileAction(string path)
         {
             if (File.Exists(path))
             {
@@ -338,12 +357,13 @@ namespace GitStore
 
                 return true;
             }
+
             return false;
         }
 
-        public IEnumerable<T> Get<T>(Predicate<T> predicate)
+        public IEnumerable<T> GetObjects<T>(Predicate<T> predicate)
         {
-            var dir = PathFor<T>();
+            var dir = PathForType<T>();
 
             if (!Directory.Exists(dir))
             {
@@ -352,7 +372,7 @@ namespace GitStore
 
             foreach (var path in Directory.EnumerateFiles(dir))
             {
-                var obj = ToObject<T>(path);
+                var obj = JsonToObject<T>(path);
 
                 if (obj == null)
                 {
@@ -366,9 +386,9 @@ namespace GitStore
             }
         }
 
-        public IEnumerable<T> Get<T>()
+        public IEnumerable<T> GetAllObjects<T>()
         {
-            var dir = PathFor<T>();
+            var dir = PathForType<T>();
 
             if (!Directory.Exists(dir))
             {
@@ -377,7 +397,7 @@ namespace GitStore
 
             foreach (var path in Directory.EnumerateFiles(dir))
             {
-                var obj = ToObject<T>(path);
+                var obj = JsonToObject<T>(path);
 
                 if (obj == null)
                 {
@@ -388,7 +408,7 @@ namespace GitStore
             }
         }
 
-        private string PathFor<T>()
+        private string PathForType<T>()
         {
             var type = typeof(T).ToString();
             foreach (var invalidFileNameChar in Path.GetInvalidFileNameChars())
@@ -399,7 +419,7 @@ namespace GitStore
             return $"{_repoDirectory}/{type}";
         }
 
-        private string PathFor<T>(object objId)
+        private string PathForObjectWithId<T>(object objId)
         {
             var type = typeof(T).ToString();
             var id = objId.ToString();
@@ -423,12 +443,12 @@ namespace GitStore
             return $"{_repoDirectory}/Files/{name}";
         }
 
-        private string ToJson<T>(T obj)
+        private string ObjectToJson<T>(T obj)
         {
             return JsonConvert.SerializeObject(obj, Formatting.Indented);
         }
 
-        private T ToObject<T>(string path)
+        private T JsonToObject<T>(string path)
         {
             var s = File.ReadAllText(path);
 
@@ -443,10 +463,11 @@ namespace GitStore
                     Console.WriteLine("Failed to deserialize json to object. " + ex.Message);
                 }
             }
+
             return default(T);
         }
 
-        private object GetIdValue<T>(T obj)
+        private object GetIdPropertyValue<T>(T obj)
         {
             var props = obj.GetType().GetProperties().Where(prop => prop.Name == "Id");
 
