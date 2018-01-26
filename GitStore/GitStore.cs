@@ -390,19 +390,27 @@ namespace GitStore
 
         private string PathFor<T>()
         {
-            return $"{_repoDirectory}/{typeof(T)}";
+            var type = typeof(T).ToString();
+            foreach (var invalidFileNameChar in Path.GetInvalidFileNameChars())
+            {
+                type = type.Replace(invalidFileNameChar, '_');
+            }
+
+            return $"{_repoDirectory}/{type}";
         }
 
         private string PathFor<T>(object objId)
         {
-            var path = $"{typeof(T)}/{objId}.json";
+            var type = typeof(T).ToString();
+            var id = objId.ToString();
 
-            foreach (var invalidPathChar in Path.GetInvalidPathChars())
+            foreach (var invalidFileNameChar in Path.GetInvalidFileNameChars())
             {
-                path = path.Replace(invalidPathChar, '_');
+                type = type.Replace(invalidFileNameChar, '_');
+                id = id.Replace(invalidFileNameChar, '_');
             }
 
-            return $"{_repoDirectory}/{path}";
+            return $"{_repoDirectory}/{type}/{id}.json";
         }
 
         private string PathForFile(string name)
