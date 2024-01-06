@@ -78,11 +78,11 @@ namespace GitStore
                 // var tObj = store.Get<TestObject>(obj.Id).Result;
             }
 
-            store.Save<TestObject>(objs);
+            store.SaveObjects<TestObject>(objs);
 
-            var objectsToRemove = store.Get<TestObject>(x => x.UserName.Contains("13"));
+            var objectsToRemove = store.GetObjects<TestObject>(x => x.UserName.Contains("13"));
 
-            store.Delete<TestObject>(objectsToRemove);
+            store.DeleteObjects<TestObject>(objectsToRemove);
         }
     }
 
